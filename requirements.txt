@@ -1,0 +1,4 @@
+FinanceDataReader
+OpenDartReader
+openpyxl
+streamlit
