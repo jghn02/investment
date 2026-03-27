@@ -74,17 +74,36 @@ if os.path.exists(_csv_path):
 else:
     st.sidebar.caption("기업코드 파일 없음")
 
-if st.sidebar.button("🔄 기업코드 갱신", help="DART에서 최신 기업코드 다운로드 (분기 1회 권장)"):
+if st.sidebar.button("🔄 기업코드 갱신", help="DART에서 최신 기업코드 다운로드 후 GitHub에 자동 push"):
     if not dart_api_key:
         st.sidebar.error("DART API 키를 먼저 입력하세요.")
     else:
+        github_token = load_secret("GITHUB_TOKEN")
         with st.sidebar.spinner("갱신 중..."):
             try:
+                import base64, requests as _req
                 import OpenDartReader as _odr
+
+                # 1. DART에서 최신 기업코드 수집
                 _dart_tmp = _odr(dart_api_key)
                 _df = _dart_tmp.corp_codes
                 _df.to_csv(_csv_path, index=False)
-                st.sidebar.success(f"완료: {len(_df):,}개 기업 ({datetime.date.today()})")
+
+                # 2. GitHub에 push (토큰이 있을 때만)
+                if github_token:
+                    _api_url = "https://api.github.com/repos/jghn02/investment/contents/corp_codes.csv"
+                    _headers = {"Authorization": f"token {github_token}"}
+                    _sha = _req.get(_api_url, headers=_headers).json().get("sha", "")
+                    with open(_csv_path, "rb") as f:
+                        _content = base64.b64encode(f.read()).decode()
+                    _req.put(_api_url, headers=_headers, json={
+                        "message": f"chore: corp_codes 갱신 ({datetime.date.today()})",
+                        "content": _content,
+                        "sha": _sha,
+                    })
+                    st.sidebar.success(f"완료 + GitHub push: {len(_df):,}개 기업 ({datetime.date.today()})")
+                else:
+                    st.sidebar.success(f"완료 (로컬만): {len(_df):,}개 기업 — GitHub push는 GITHUB_TOKEN 설정 필요")
             except Exception as e:
                 st.sidebar.error(f"실패: {e}")
 
