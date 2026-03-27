@@ -6,7 +6,7 @@ import datetime
 import io
 import pandas as pd
 import streamlit as st
-import OpenDartReader
+from OpenDartReader import OpenDartReader
 
 from data_fetcher import get_stock_list, get_dart_corp_codes, collect_all
 from screener import apply_screening
@@ -90,7 +90,7 @@ with tab_screen:
         import config
         config.SCREENING.update(screening_override)
 
-        dart = OpenDartReader.OpenDartReader(dart_api_key)
+        dart = OpenDartReader(dart_api_key)
         st.session_state.dart = dart
 
         with st.spinner("종목 리스트 수집 중..."):

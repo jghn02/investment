@@ -2,7 +2,7 @@ import time
 import warnings
 import pandas as pd
 import FinanceDataReader as fdr
-import OpenDartReader
+from OpenDartReader import OpenDartReader
 from config import DART_API_KEY, MARKETS
 
 warnings.filterwarnings("ignore")
@@ -19,7 +19,7 @@ def get_stock_list() -> pd.DataFrame:
     return result
 
 
-def get_dart_corp_codes(dart: OpenDartReader.OpenDartReader) -> pd.DataFrame:
+def get_dart_corp_codes(dart: OpenDartReader) -> pd.DataFrame:
     """DART 기업코드 목록 (종목코드 → corp_code 매핑용)."""
     corp_list = dart.corp_codes
     # stock_code 컬럼만 사용
@@ -36,7 +36,7 @@ def _parse_amount(val) -> float:
         return None
 
 
-def get_financial_data(dart: OpenDartReader.OpenDartReader, corp_code: str) -> dict:
+def get_financial_data(dart: OpenDartReader, corp_code: str) -> dict:
     """
     DART API로 최근 연간 손익계산서 + 재무상태표 수집.
     반환: {"revenue", "revenue_prev", "operating_income", "total_debt", "total_equity"}
@@ -121,7 +121,7 @@ def build_financials(stock_code: str, fin_data: dict) -> dict:
     return result
 
 
-def collect_all(stock_list: pd.DataFrame, dart: OpenDartReader.OpenDartReader,
+def collect_all(stock_list: pd.DataFrame, dart: OpenDartReader,
                 corp_code_map: pd.DataFrame, max_stocks: int = None,
                 progress_callback=None) -> pd.DataFrame:
     """
