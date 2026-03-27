@@ -63,6 +63,32 @@ if not claude_api_key:
                                             help="console.anthropic.com에서 발급")
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("**기업코드 관리**")
+
+# corp_codes.csv 마지막 수정일 표시
+_csv_path = os.path.join(os.path.dirname(__file__), "corp_codes.csv")
+if os.path.exists(_csv_path):
+    _mtime = os.path.getmtime(_csv_path)
+    _mdate = datetime.datetime.fromtimestamp(_mtime).strftime("%Y-%m-%d")
+    st.sidebar.caption(f"기업코드 기준일: {_mdate}")
+else:
+    st.sidebar.caption("기업코드 파일 없음")
+
+if st.sidebar.button("🔄 기업코드 갱신", help="DART에서 최신 기업코드 다운로드 (분기 1회 권장)"):
+    if not dart_api_key:
+        st.sidebar.error("DART API 키를 먼저 입력하세요.")
+    else:
+        with st.sidebar.spinner("갱신 중..."):
+            try:
+                import OpenDartReader as _odr
+                _dart_tmp = _odr(dart_api_key)
+                _df = _dart_tmp.corp_codes
+                _df.to_csv(_csv_path, index=False)
+                st.sidebar.success(f"완료: {len(_df):,}개 기업 ({datetime.date.today()})")
+            except Exception as e:
+                st.sidebar.error(f"실패: {e}")
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("**테스트 모드**")
 test_mode = st.sidebar.checkbox("빠른 테스트 (상위 200개 종목만)", value=False)
 max_stocks = 200 if test_mode else None
