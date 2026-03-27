@@ -22,7 +22,9 @@ def calculate_score(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     df["score_operating_margin"] = _normalize(df["operating_margin"], higher_is_better=True)
-    df["score_per"] = _normalize(df["per"], higher_is_better=False)
+    # PER NaN → 중앙값으로 대체 후 정규화 (데이터 없는 종목 제외하지 않음)
+    per_filled = df["per"].fillna(df["per"].median())
+    df["score_per"] = _normalize(per_filled, higher_is_better=False)
     df["score_revenue_growth"] = _normalize(df["revenue_growth"], higher_is_better=True)
     df["score_debt_ratio"] = _normalize(df["debt_ratio"], higher_is_better=False)
 
