@@ -1,3 +1,4 @@
+import os
 import time
 import warnings
 import pandas as pd
@@ -6,6 +7,18 @@ import OpenDartReader
 from config import DART_API_KEY, MARKETS
 
 warnings.filterwarnings("ignore")
+
+CORP_CODES_CSV = os.path.join(os.path.dirname(__file__), "corp_codes.csv")
+
+
+class FastDart(OpenDartReader):
+    """
+    DART 초기화 시 기업코드를 API로 다운로드하지 않고 로컬 CSV에서 로드.
+    Streamlit Cloud 등 해외 서버에서의 타임아웃 방지용.
+    """
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.corp_codes = pd.read_csv(CORP_CODES_CSV, dtype=str).fillna("")
 
 
 def get_stock_list() -> pd.DataFrame:
@@ -19,9 +32,9 @@ def get_stock_list() -> pd.DataFrame:
     return result
 
 
-def get_dart_corp_codes(dart: OpenDartReader) -> pd.DataFrame:
+def get_dart_corp_codes(dart) -> pd.DataFrame:
     """DART 기업코드 목록 (종목코드 → corp_code 매핑용)."""
-    corp_list = dart.corp_codes
+    corp_list = dart.corp_codes.copy()
     # stock_code 컬럼만 사용
     corp_list = corp_list[corp_list["stock_code"].notna() & (corp_list["stock_code"] != "")].copy()
     corp_list["stock_code"] = corp_list["stock_code"].str.strip().str.zfill(6)

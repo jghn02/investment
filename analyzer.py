@@ -33,7 +33,7 @@ def _clean_html(html_bytes: bytes) -> str:
         return ""
 
 
-def get_latest_annual_report(dart: OpenDartReader, corp_code: str) -> str | None:
+def get_latest_annual_report(dart: FastDart, corp_code: str) -> str | None:
     """최근 사업보고서 rcp_no 반환."""
     try:
         reports = dart.report_list(corp_code, bgn_de="20220101", pblntf_ty="A")
@@ -47,7 +47,7 @@ def get_latest_annual_report(dart: OpenDartReader, corp_code: str) -> str | None
         return None
 
 
-def extract_sections(dart: OpenDartReader, rcp_no: str) -> dict:
+def extract_sections(dart: FastDart, rcp_no: str) -> dict:
     """
     서브문서 목록에서 TARGET_SECTIONS에 해당하는 섹션 텍스트 추출.
     반환: {"사업내용": "...", "리스크": "...", ...}
@@ -141,7 +141,7 @@ PM·투자자 관점에서 간결하게 분석해주세요.
 
 
 def run_analysis(
-    dart: OpenDartReader,
+    dart: FastDart,
     corp_code: str,
     company_name: str,
     claude_api_key: str,
