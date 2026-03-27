@@ -114,7 +114,7 @@ PM·투자자 관점에서 간결하게 분석해주세요.
 
     try:
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-5",
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )
