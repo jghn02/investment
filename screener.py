@@ -13,10 +13,12 @@ def apply_screening(df: pd.DataFrame) -> pd.DataFrame:
         debt_ratio        (float, %)
     """
     crit = SCREENING
+    # PER이 NaN이면 해당 조건은 통과 처리 (데이터 없는 경우 제외하지 않음)
+    per_mask = df["per"].isna() | ((df["per"] > 0) & (df["per"] <= crit["max_per"]))
+
     mask = (
         (df["operating_margin"] >= crit["min_operating_margin"])
-        & (df["per"] > 0)
-        & (df["per"] <= crit["max_per"])
+        & per_mask
         & (df["revenue_growth"] >= crit["min_revenue_growth"])
         & (df["debt_ratio"] > 0)
         & (df["debt_ratio"] <= crit["max_debt_ratio"])
