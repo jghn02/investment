@@ -5,3 +5,5 @@ streamlit
 pandas
 numpy
 requests
+anthropic
+beautifulsoup4
