@@ -32,13 +32,31 @@ def _get_bsns_year() -> str:
 
 
 def get_stock_list() -> pd.DataFrame:
-    """코스피 + 코스닥 전체 종목 리스트 반환."""
+    """
+    코스피 + 코스닥 종목 리스트 반환.
+    FDR(KRX API) 실패 시 corp_codes.csv 폴백 사용.
+    """
     frames = []
     for market in MARKETS:
-        df = fdr.StockListing(market)[["Code", "Name", "Market"]].copy()
-        frames.append(df)
-    result = pd.concat(frames, ignore_index=True)
-    print(f"[Fetcher] 종목 수집 완료: {len(result)}개")
+        try:
+            df = fdr.StockListing(market)[["Code", "Name", "Market"]].copy()
+            frames.append(df)
+        except Exception:
+            pass
+
+    if frames:
+        result = pd.concat(frames, ignore_index=True)
+        print(f"[Fetcher] FDR 종목 수집 완료: {len(result)}개")
+        return result
+
+    # KRX API 다운 시 → DART corp_codes.csv 폴백
+    print("[Fetcher] KRX API 불가 → corp_codes.csv 폴백 사용")
+    corp = pd.read_csv(CORP_CODES_CSV, dtype=str).fillna("")
+    listed = corp[corp["stock_code"].str.len() == 6].copy()
+    listed = listed.rename(columns={"stock_code": "Code", "corp_name": "Name"})
+    listed["Market"] = "KRX"
+    result = listed[["Code", "Name", "Market"]].reset_index(drop=True)
+    print(f"[Fetcher] 폴백 종목 수집 완료: {len(result)}개")
     return result
 
 
@@ -87,19 +105,19 @@ def _parse_amount(val) -> float:
 def get_financial_data(dart, corp_code: str, bsns_year: str) -> dict:
     """
     DART API로 연간 손익계산서 + 재무상태표 수집.
+    CFS(연결) 우선 → 없으면 OFS(별도) 시도.
     반환: {"revenue", "revenue_prev", "operating_income", "total_debt", "total_equity"}
     """
     try:
-        df = dart.finstate_all(corp_code, bsns_year=bsns_year, reprt_code="11011")
-        if df is None or df.empty:
-            return {}
-
-        # CFS(연결) 우선, 없으면 OFS(별도)
+        sub = None
         for fs_div in ["CFS", "OFS"]:
-            sub = df[df["fs_div"] == fs_div].copy()
-            if not sub.empty:
+            df = dart.finstate_all(corp_code, bsns_year=bsns_year,
+                                   reprt_code="11011", fs_div=fs_div)
+            if df is not None and not df.empty:
+                sub = df
                 break
-        else:
+
+        if sub is None:
             return {}
 
         def pick(account_name: str, year_col: str):
