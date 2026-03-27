@@ -5,7 +5,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import anthropic
-from OpenDartReader import OpenDartReader
+import OpenDartReader
 
 # 추출 대상 섹션 (DART 서브문서 제목 키워드)
 TARGET_SECTIONS = {

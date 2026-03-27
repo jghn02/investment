@@ -2,7 +2,7 @@ import time
 import warnings
 import pandas as pd
 import FinanceDataReader as fdr
-from OpenDartReader import OpenDartReader
+import OpenDartReader
 from config import DART_API_KEY, MARKETS
 
 warnings.filterwarnings("ignore")
