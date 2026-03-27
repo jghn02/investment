@@ -2,6 +2,7 @@
 한국 주식 추천 시스템 — Streamlit 웹앱
 """
 import os
+import time
 import datetime
 import io
 import pandas as pd
@@ -91,38 +92,74 @@ with tab_screen:
         dart = FastDart(dart_api_key)
         st.session_state.dart = dart
 
+        # ── 단계 인디케이터 ──
+        STEPS = ["① 종목 수집", "② 재무 수집", "③ 스크리닝", "④ 스코어링"]
+        step_placeholder = st.empty()
+
+        def render_steps(active: int):
+            cols = step_placeholder.columns(4)
+            for i, (col, label) in enumerate(zip(cols, STEPS)):
+                if i < active:
+                    col.success(label)
+                elif i == active:
+                    col.info(f"🔄 {label}")
+                else:
+                    col.empty()
+
+        # Step 1: 종목 수집
+        render_steps(0)
         with st.spinner("종목 리스트 수집 중..."):
             stock_list = get_stock_list()
             corp_code_map = get_dart_corp_codes(dart)
             st.session_state.corp_code_map = corp_code_map
+        total_count = min(max_stocks, len(stock_list)) if max_stocks else len(stock_list)
 
-        st.info(f"총 {len(stock_list)}개 종목 대상 {'(테스트: 200개 제한)' if test_mode else ''}")
-
+        # Step 2: 재무 수집
+        render_steps(1)
         progress_bar = st.progress(0)
-        status_text = st.empty()
+        stat_cols = st.columns(3)
+        pct_box = stat_cols[0].empty()
+        count_box = stat_cols[1].empty()
+        time_box = stat_cols[2].empty()
+        stock_name_box = st.empty()
+        start_time = time.time()
 
         def progress_callback(current, total, name):
-            progress_bar.progress(int(current / total * 100))
-            status_text.text(f"수집 중: {current}/{total} — {name}")
+            pct = int(current / total * 100)
+            elapsed = time.time() - start_time
+            rate = current / elapsed if elapsed > 0 else 1
+            remaining = int((total - current) / rate) if rate > 0 else 0
+            mins, secs = divmod(remaining, 60)
 
-        with st.spinner("재무 데이터 수집 중..."):
-            df_raw = collect_all(stock_list, dart, corp_code_map,
-                                 max_stocks=max_stocks,
-                                 progress_callback=progress_callback)
+            progress_bar.progress(pct)
+            pct_box.metric("진행률", f"{pct}%")
+            count_box.metric("처리", f"{current:,} / {total:,}")
+            time_box.metric("남은 시간", f"{mins}분 {secs}초" if mins else f"{secs}초")
+            stock_name_box.caption(f"🔍 현재 종목: **{name}**")
 
+        df_raw = collect_all(stock_list, dart, corp_code_map,
+                             max_stocks=max_stocks,
+                             progress_callback=progress_callback)
+
+        # 진행 UI 정리
         progress_bar.empty()
-        status_text.empty()
+        pct_box.empty(); count_box.empty(); time_box.empty(); stock_name_box.empty()
 
         if df_raw.empty:
             st.error("재무 데이터 수집 실패. DART API 키를 확인하세요.")
             st.stop()
 
+        # Step 3: 스크리닝
+        render_steps(2)
         df_screened = apply_screening(df_raw)
         if df_screened.empty:
             st.warning("스크리닝 통과 종목 없음. 기준값을 완화해보세요.")
             st.stop()
 
+        # Step 4: 스코어링
+        render_steps(3)
         st.session_state.df_scored = calculate_score(df_screened)
+        render_steps(4)  # 전체 완료
 
     # 결과 테이블
     if st.session_state.df_scored is not None:
