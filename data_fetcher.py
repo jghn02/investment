@@ -31,10 +31,28 @@ def _get_bsns_year() -> str:
     return str(today.year - 2 if today.month < 4 else today.year - 1)
 
 
-def get_stock_list() -> pd.DataFrame:
+def _get_listed_from_dart(bsns_year: str) -> pd.DataFrame:
+    """
+    KRX API 없이 corp_codes.csv의 modify_date로 현재 상장 종목 추정.
+    bsns_year 전년도 이후 수정된 기업 = 활성 상장사로 간주.
+    """
+    corp_df = pd.read_csv(CORP_CODES_CSV, dtype=str).fillna("")
+    listed = corp_df[corp_df["stock_code"].str.len() == 6].copy()
+    listed["modify_date"] = pd.to_datetime(listed["modify_date"], format="%Y%m%d", errors="coerce")
+    cutoff = pd.Timestamp(f"{int(bsns_year) - 1}-01-01")
+    active = listed[listed["modify_date"] >= cutoff].copy()
+    active = active.rename(columns={"stock_code": "Code", "corp_name": "Name"})
+    active["Market"] = "KRX"
+    result = active[["Code", "Name", "Market"]].reset_index(drop=True)
+    print(f"[Fetcher] DART 폴백 종목 수집 완료: {len(result)}개 ({int(bsns_year)-1}년 이후 수정 기업)")
+    return result
+
+
+def get_stock_list(api_key: str = "", bsns_year: str = "") -> pd.DataFrame:
     """
     코스피 + 코스닥 종목 리스트 반환.
-    FDR(KRX API) 실패 시 corp_codes.csv 폴백 사용.
+    1순위: FDR(KRX API)
+    2순위: DART 사업보고서 제출 기업 목록 (KRX 다운 시)
     """
     frames = []
     for market in MARKETS:
@@ -49,15 +67,18 @@ def get_stock_list() -> pd.DataFrame:
         print(f"[Fetcher] FDR 종목 수집 완료: {len(result)}개")
         return result
 
-    # KRX API 다운 시 → DART corp_codes.csv 폴백
-    print("[Fetcher] KRX API 불가 → corp_codes.csv 폴백 사용")
+    # KRX API 다운 시 → DART 폴백
+    if bsns_year:
+        print("[Fetcher] KRX API 불가 → DART modify_date 폴백")
+        return _get_listed_from_dart(bsns_year)
+
+    # 최후 폴백: corp_codes.csv 전체 (부정확할 수 있음)
+    print("[Fetcher] 최후 폴백: corp_codes.csv 전체 사용 (비추천)")
     corp = pd.read_csv(CORP_CODES_CSV, dtype=str).fillna("")
     listed = corp[corp["stock_code"].str.len() == 6].copy()
     listed = listed.rename(columns={"stock_code": "Code", "corp_name": "Name"})
     listed["Market"] = "KRX"
-    result = listed[["Code", "Name", "Market"]].reset_index(drop=True)
-    print(f"[Fetcher] 폴백 종목 수집 완료: {len(result)}개")
-    return result
+    return listed[["Code", "Name", "Market"]].reset_index(drop=True)
 
 
 def get_dart_corp_codes(dart) -> pd.DataFrame:

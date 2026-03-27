@@ -32,7 +32,8 @@ def collect(max_stocks=None):
     dart = FastDart(api_key)
 
     print("종목 리스트 수집 중...")
-    stock_list = get_stock_list()
+    bsns_year = _get_bsns_year()
+    stock_list = get_stock_list(api_key=api_key, bsns_year=bsns_year)
     corp_code_map = get_dart_corp_codes(dart)
 
     print("PER 수집 중 (로컬 환경)...")
