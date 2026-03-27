@@ -1,4 +1,7 @@
-FinanceDataReader
+finance-datareader
 OpenDartReader
 openpyxl
 streamlit
+pandas
+numpy
+requests
