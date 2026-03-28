@@ -4,11 +4,12 @@ from config import WEIGHTS
 
 
 def _normalize(series: pd.Series, higher_is_better: bool = True) -> pd.Series:
-    """Min-max 정규화 → 0~100점. higher_is_better=False면 역방향."""
-    s_min, s_max = series.min(), series.max()
+    """윈저화(1~99%) 후 min-max 정규화 → 0~100점. 이상값 왜곡 방지."""
+    s = series.clip(series.quantile(0.01), series.quantile(0.99))
+    s_min, s_max = s.min(), s.max()
     if s_max == s_min:
         return pd.Series(50.0, index=series.index)
-    norm = (series - s_min) / (s_max - s_min) * 100
+    norm = (s - s_min) / (s_max - s_min) * 100
     return norm if higher_is_better else 100 - norm
 
 
